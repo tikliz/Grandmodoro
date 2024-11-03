@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { onDestroy } from "svelte";
-    import { EventsOn, EventsOff } from "../../wailsjs/runtime";
+    import { EventsOn, EventsOff, Quit } from "../../wailsjs/runtime";
     import {
         StartDualTimer,
         StopDualTimer,
@@ -9,9 +9,13 @@
         CheckFocused,
         PauseDualTimer,
         ResumeDualTimer,
+        SaveMoni,
+        LoadMoni,
+        IncrementMoni,
     } from "../../wailsjs/go/main/App";
     import { slide } from "svelte/transition";
     import { main } from "../../wailsjs/go/models";
+    import { quintIn } from "svelte/easing";
 
     const FRACTION = 16.67;
 
@@ -28,6 +32,12 @@
     let sliderValue = FRACTION * 3;
     let working = true;
     let isPaused = false;
+
+    export let workValue = 2.0;
+    let punishValue = workValue / 2;
+    export let showMoniLabel = true;
+    let moniLabel = "0.0";
+    let moniLabelColor = "text-white";
 
     let topBarWidth = 100;
     let bottomBarWidth = 100;
@@ -47,6 +57,7 @@
         await StartDualTimer(topBarTick, bottomBarTick);
         updateDurations(sliderValue);
         togglePauseResume();
+        moniLabel = await LoadMoni();
 
         EventsOn("topBarTick", async () => {
             if (working) {
@@ -54,21 +65,37 @@
                     selectedPrograms.length > 0 &&
                     (await CheckFocused(selectedPrograms)) == false
                 ) {
+                    moniLabelColor = "text-red-500";
+                    moniLabel = await IncrementMoni(moniLabel, -punishValue);
                     return;
                 }
+                moniLabelColor = "text-green-500";
+                moniLabel = await IncrementMoni(moniLabel, workValue);
                 topBarValue -= topBarTick;
                 if (topBarValue <= 0) {
                     topBarValue = 0;
                     if (bottomBarValue <= 0) {
                         working = false;
+                        SaveMoni(moniLabel);
                     }
                 }
             } else {
+                if (
+                    selectedPrograms.length > 0 &&
+                    (await CheckFocused(selectedPrograms)) == true
+                ) {
+                    moniLabelColor = "text-red-500";
+                    moniLabel = await IncrementMoni(moniLabel, -punishValue);
+                } else {
+                    moniLabelColor = "text-green-500";
+                    moniLabel = await IncrementMoni(moniLabel, workValue);
+                }
                 if (topBarValue >= topBarDuration) {
                     topBarValue = topBarDuration;
                     if (bottomBarValue >= bottomBarDuration) {
                         bottomBarValue = bottomBarDuration;
                         working = true;
+                        SaveMoni(moniLabel);
                     }
                     return;
                 }
@@ -174,6 +201,7 @@
         if (isPaused) {
             ResumeDualTimer();
         } else {
+            moniLabelColor = "text-white";
             PauseDualTimer();
         }
         isPaused = !isPaused;
@@ -200,6 +228,8 @@
         clearInterval(topBarInterval);
         clearInterval(refillInterval);
         StartDualTimer(topBarTick, bottomBarTick);
+        isPaused = true;
+        togglePauseResume();
     }
 
     const getFraction = (value) => {
@@ -217,6 +247,10 @@
             topBarValue = 0;
             bottomBarValue = 0;
         }
+    }
+
+    function saveMoni() {
+        SaveMoni(moniLabel);
     }
 
     $: if (working) {
@@ -252,7 +286,17 @@
     });
 </script>
 
-<div class="relative items-center p-4 rounded-lg shadow-md bg-slate-800" style="--wails-draggable:drag">
+<div
+    class="relative items-center p-4 pt-1 rounded-lg shadow-md bg-slate-800"
+    style="--wails-draggable:drag"
+>
+    {#if showMoniLabel}
+        <div class="text-center {moniLabelColor} mb-2 font-bold">
+            <span style="--wails-draggable:no-drag">$: {moniLabel}</span>
+        </div>
+    {:else}
+        <div class="mb-2"></div>
+    {/if}
     <div on:click={toggleDropdown} on:keydown class="relative space-y-1">
         <!-- Top fill bar -->
         <div class="w-full h-5 bg-gray-200 rounded-full overflow-hidden">
@@ -332,6 +376,36 @@
         <div
             class="absolute left-0 right-0 mx-auto mt-2 p-4 bg-white rounded shadow-lg w-full max-w-xs max-h-[315px] overflow-y-auto"
         >
+            <div class="flex flex-row w-full space-x-2 text-sm">
+                <label
+                    class="flex-1 bg-gray-300 rounded text-white cursor-pointer"
+                    ><input
+                        type="checkbox"
+                        id="checkbox"
+                        class=""
+                        bind:checked={showMoniLabel}
+                    /> SCORE</label
+                >
+                <!-- close app button -->
+                <button
+                    on:click={Quit}
+                    class="flex-1 text-white bg-red-600 hover:bg-red-700 rounded"
+                >
+                    CLOSE APP
+                </button>
+            </div>
+            <div class="flex flex-row space-x-2 mt-2 text-sm w-full">
+                <button
+                    on:click={depleteBars}
+                    class="flex-1 bg-gray-300 rounded appearance-none cursor-pointer"
+                    >DEPLETE</button
+                >
+                <button
+                    on:click={() => resetAll()}
+                    class="flex-1 bg-gray-300 rounded appearance-none cursor-pointer"
+                    >RESET TIMER</button
+                >
+            </div>
             <div class="flex flex-row content-between mt-4">
                 <div>
                     <label
@@ -378,6 +452,7 @@
             <input
                 id="slider"
                 type="range"
+                style="--wails-draggable:no-drag"
                 min={FRACTION}
                 max="100.02"
                 step={FRACTION}
@@ -390,18 +465,6 @@
                 <span>{getFraction(sliderValue)}</span>
                 <span>{workDuration / 60000} min</span>
             </div>
-            <div class="flex flex-row">
-                <button
-                    on:click={depleteBars}
-                    class="mt-2 w-full bg-gray-300 rounded-lg appearance-none cursor-pointer"
-                    >DEPLETE</button
-                >
-                <button
-                    on:click={() => resetAll()}
-                    class="mt-2 w-full bg-gray-300 rounded-lg appearance-none cursor-pointer"
-                    >RESET TIMER</button
-                >
-            </div>
             <!-- Nested dropdown for running programs -->
             <button
                 on:click={async () => {
@@ -413,7 +476,7 @@
                 }}
                 class="mt-2 p-2 bg-gray-100 rounded w-full text-gray-700"
             >
-                Select Running Program
+                Select Focus Programs
             </button>
 
             {#if showProgramDropdown}

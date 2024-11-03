@@ -6,11 +6,17 @@ export function CheckFocused(arg1:Array<string>):Promise<boolean>;
 
 export function GetRunningPrograms():Promise<Array<main.ProgramInfo>>;
 
-export function Greet(arg1:string):Promise<string>;
+export function IncrementMoni(arg1:string,arg2:number):Promise<string>;
+
+export function LoadMoni():Promise<string>;
 
 export function PauseDualTimer():Promise<void>;
 
+export function Quit():Promise<void>;
+
 export function ResumeDualTimer():Promise<void>;
+
+export function SaveMoni(arg1:string):Promise<void>;
 
 export function StartDualTimer(arg1:number,arg2:number):Promise<void>;
 

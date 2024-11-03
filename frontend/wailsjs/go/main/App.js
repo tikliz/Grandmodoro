@@ -10,16 +10,28 @@ export function GetRunningPrograms() {
   return window['go']['main']['App']['GetRunningPrograms']();
 }
 
-export function Greet(arg1) {
-  return window['go']['main']['App']['Greet'](arg1);
+export function IncrementMoni(arg1, arg2) {
+  return window['go']['main']['App']['IncrementMoni'](arg1, arg2);
+}
+
+export function LoadMoni() {
+  return window['go']['main']['App']['LoadMoni']();
 }
 
 export function PauseDualTimer() {
   return window['go']['main']['App']['PauseDualTimer']();
 }
 
+export function Quit() {
+  return window['go']['main']['App']['Quit']();
+}
+
 export function ResumeDualTimer() {
   return window['go']['main']['App']['ResumeDualTimer']();
+}
+
+export function SaveMoni(arg1) {
+  return window['go']['main']['App']['SaveMoni'](arg1);
 }
 
 export function StartDualTimer(arg1, arg2) {

@@ -1,7 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"math/rand/v2"
+	"os"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/go-vgo/robotgo"
@@ -15,6 +20,15 @@ type TimerD struct {
 	remaining    time.Duration
 	lastStarted  time.Time
 	running      bool
+}
+
+type ProgramInfo struct {
+	PID  int32
+	Name string
+}
+
+type MoniData struct {
+	Moni string `json:"moni"`
 }
 
 func (a *App) StartDualTimer(topBarTick, bottomBarTick int) {
@@ -106,11 +120,6 @@ func (a *App) StopDualTimer() {
 	}
 }
 
-type ProgramInfo struct {
-	PID  int32
-	Name string
-}
-
 func (a *App) GetRunningPrograms() ([]ProgramInfo, error) {
 	processes, err := process.Processes()
 	if err != nil {
@@ -145,4 +154,53 @@ func (a *App) CheckFocused(programs []string) bool {
 		}
 	}
 	return false
+}
+
+func (a *App) SaveMoni(value string) error {
+	data := MoniData{Moni: value}
+	var err error
+	cfgDir, err := os.UserConfigDir()
+	if err != nil {
+		return err
+	}
+	filePath := filepath.Join(cfgDir, "grandmodoro/moni_data.json")
+	err = os.MkdirAll(filepath.Dir(filePath), 0755)
+	if err != nil {
+		return err
+	}
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	fmt.Println(filePath)
+
+	encoder := json.NewEncoder(file)
+	return encoder.Encode(data)
+}
+
+func (a *App) LoadMoni() string {
+	data := MoniData{Moni: "0.0"}
+	cfgDir, _ := os.UserConfigDir()
+	filePath := filepath.Join(cfgDir, "grandmodoro/moni_data.json")
+	file, err := os.ReadFile(filePath)
+	if err == nil {
+		json.Unmarshal(file, &data)
+	}
+	return data.Moni
+}
+
+func (a *App) IncrementMoni(value string, amount float32) (string, error) {
+	numValue, err := strconv.ParseFloat(value, 32)
+	if err != nil {
+		return "", err
+	}
+	var increment float32
+	if amount >= 0 {
+		increment = 0.05 + rand.Float32()*(amount-0.05)
+	} else {
+		increment = amount
+	}
+	newValue := float32(numValue) + increment
+	return fmt.Sprintf("%.2f", newValue), nil
 }
