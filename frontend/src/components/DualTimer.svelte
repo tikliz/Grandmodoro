@@ -28,7 +28,7 @@
     let topBarValue = topBarDuration;
     let bottomBarValue = bottomBarDuration;
     let workInputMinutes = Math.floor(workDuration / 60000);
-    let restInputMinutes = Math.floor(workDuration / 60000);
+    let restInputMinutes = Math.floor(restDuration / 60000);
     let sliderValue = FRACTION * 3;
     let working = true;
     let isPaused = false;

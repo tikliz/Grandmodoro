@@ -5,5 +5,5 @@
 </script>
 
 <main>
-  <DualTimer workValue={.2} />
+  <DualTimer workValue={.2} workDuration={25 * 60000} restDuration={5 * 60000} />
 </main>
